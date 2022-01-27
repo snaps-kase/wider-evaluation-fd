@@ -16,7 +16,8 @@ python3 setup.py build_ext --inplace
 **GroungTruth:** `wider_face_val.mat`, `wider_easy_val.mat`, `wider_medium_val.mat`,`wider_hard_val.mat`
 
 ````
-python3 evaluation.py -p <your prediction dir> -g <groud truth dir>
+deprecated : python3 evaluation.py -p <your prediction dir> -g <groud truth dir>
+Run : evaluation.py 
 ````
 
 ## Bugs & Problems
