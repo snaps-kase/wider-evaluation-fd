@@ -5,17 +5,8 @@ mail: tianhengcheng@gmail.com
 copyright@wondervictor
 """
 
-import os
-import tqdm
-import pickle
-import argparse
-import numpy as np
-from scipy.io import loadmat
-from bbox import bbox_overlaps
-import sys;sys.path.append('/Users/kyb/ai-project/ai_evaluation_api/fd_eval_m/retinaface/src/')
-from retinaface import RetinaFace
-from IPython import embed
-
+import requests
+import base64
 
 def get_gt_boxes(gt_dir):
     """ gt dir: (wider_face_val.mat, wider_easy_val.mat, wider_medium_val.mat, wider_hard_val.mat)"""
@@ -216,70 +207,13 @@ def voc_ap(rec, prec):
     return ap
 
 
-def evaluation(pred, gt_path, iou_thresh=0.5):
-    pred = get_preds(pred)
-    print(pred.keys())
-    return None
-    norm_score(pred)
-    facebox_list, event_list, file_list, hard_gt_list, medium_gt_list, easy_gt_list = get_gt_boxes(gt_path)
-    event_num = len(event_list)
-    thresh_num = 1000
-    settings = ['easy', 'medium', 'hard']
-    setting_gts = [easy_gt_list, medium_gt_list, hard_gt_list]
-    aps = []
-    for setting_id in range(3):
-        # different setting
-        gt_list = setting_gts[setting_id]
-        count_face = 0
-        pr_curve = np.zeros((thresh_num, 2)).astype('float')
-        # [hard, medium, easy]
-        pbar = tqdm.tqdm(range(event_num))
-        for i in pbar:
-            pbar.set_description('Processing {}'.format(settings[setting_id]))
-            event_name = str(event_list[i][0][0])
-            img_list = file_list[i][0]
-            pred_list = pred[event_name]
-            sub_gt_list = gt_list[i][0]
-            # img_pr_info_list = np.zeros((len(img_list), thresh_num, 2))
-            gt_bbx_list = facebox_list[i][0]
-
-            for j in range(len(img_list)):
-                pred_info = pred_list[str(img_list[j][0][0])]
-
-                gt_boxes = gt_bbx_list[j][0].astype('float')
-                keep_index = sub_gt_list[j][0]
-                count_face += len(keep_index)
-
-                if len(gt_boxes) == 0 or len(pred_info) == 0:
-                    continue
-                ignore = np.zeros(gt_boxes.shape[0])
-                if len(keep_index) != 0:
-                    ignore[keep_index-1] = 1
-                pred_recall, proposal_list = image_eval(pred_info, gt_boxes, ignore, iou_thresh)
-
-                _img_pr_info = img_pr_info(thresh_num, pred_info, proposal_list, pred_recall)
-
-                pr_curve += _img_pr_info
-        pr_curve = dataset_pr_info(thresh_num, pr_curve, count_face)
-
-        propose = pr_curve[:, 0]
-        recall = pr_curve[:, 1]
-
-        ap = voc_ap(recall, propose)
-        aps.append(ap)
-
-    print("==================== Results ====================")
-    print("Easy   Val mAP: {}".format(aps[0]))
-    print("Medium Val mAP: {}".format(aps[1]))
-    print("Hard   Val mAP: {}".format(aps[2]))
-    print("=================================================")
-
-
 ## ------------------------------------------------------##
 
 
 def eager_evaluation(pred_dir, gt_path, iou_thresh=0.5):
     # pred = get_preds(pred)
+    jpgtxt = base64.encodestring(open("in.jpg", "rb").read())
+    ret = requests.post('http://stg-ai.snaps.com:10030/v1/smart/lab/od', data)
     retina = RetinaFace('high')
     events = os.listdir(pred_dir)
     pred = dict()
@@ -293,6 +227,7 @@ def eager_evaluation(pred_dir, gt_path, iou_thresh=0.5):
         for imgname in event_images:
             # print(os.path.join(event_dir, imgtxt))
             img = retina.read(f"{event_dir}/{imgname}")
+            jpgtxt = base64.encodestring(open(f"{event_dir}/{imgname}", "rb").read())
             result = retina.predict(img, threshold=0.80)
 
             # print(result)
@@ -359,15 +294,10 @@ def eager_evaluation(pred_dir, gt_path, iou_thresh=0.5):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--pred')
-    parser.add_argument('-g', '--gt', default='/Users/kyb/kasetmp/test_api/fd_eval/ground_truth/')
-    args = parser.parse_args()
-
     # evaluation(args.pred, args.gt)
     # pred_path = './images/wider_face_val_result_retina'
     # gt_path = './ground_truth'
     # evaluation(pred_path, gt_path)
-    wider_val_images_path = './WIDER_val/images'
+    wider_val_images_path = './wider_val/22--Picnic'
     ground_truth_path = './ground_truth'
     eager_evaluation(pred_dir=wider_val_images_path, gt_path=ground_truth_path)
