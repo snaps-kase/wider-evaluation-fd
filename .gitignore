@@ -107,4 +107,4 @@ venv.bak/
 build
 *.c
 /WIDER_val/
-.DS_Store
+.DS_Store.DS_store
