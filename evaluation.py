@@ -6,7 +6,14 @@ copyright@wondervictor
 """
 
 import requests
-import base64
+import base64, json
+import argparse
+import os
+import tqdm
+import pickle
+import numpy as np
+from scipy.io import loadmat
+from bbox import bbox_overlaps
 
 def get_gt_boxes(gt_dir):
     """ gt dir: (wider_face_val.mat, wider_easy_val.mat, wider_medium_val.mat, wider_hard_val.mat)"""
@@ -212,9 +219,9 @@ def voc_ap(rec, prec):
 
 def eager_evaluation(pred_dir, gt_path, iou_thresh=0.5):
     # pred = get_preds(pred)
-    jpgtxt = base64.encodestring(open("in.jpg", "rb").read())
-    ret = requests.post('http://stg-ai.snaps.com:10030/v1/smart/lab/od', data)
-    retina = RetinaFace('high')
+    # jpgtxt = base64.encodestring(open("in.jpg", "rb").read())
+    # ret = requests.post('http://stg-ai.snaps.com:10030/v1/smart/lab/od', data)
+    # retina = RetinaFace('high')
     events = os.listdir(pred_dir)
     pred = dict()
     pbar = tqdm.tqdm(events)
@@ -224,59 +231,63 @@ def eager_evaluation(pred_dir, gt_path, iou_thresh=0.5):
         event_dir = os.path.join(pred_dir, event)
         event_images = os.listdir(event_dir)
         current_event = dict()
+        url = "http://stg-ai.snaps.com:10030/v1/smart/lab/fd"
         for imgname in event_images:
-            # print(os.path.join(event_dir, imgtxt))
-            img = retina.read(f"{event_dir}/{imgname}")
-            jpgtxt = base64.encodestring(open(f"{event_dir}/{imgname}", "rb").read())
-            result = retina.predict(img, threshold=0.80)
-
-            # print(result)
+            jpgtxt = base64.b64encode(open(f"{event_dir}/{imgname}", "rb").read()).decode('utf-8')
+            data = {
+                "imageData": jpgtxt,
+                "types": "bytes",
+                "ot": 1
+            }
+            response = requests.post(url=url, json=data)
+            result = json.loads(response.text)
             current_event[imgname.rstrip('.jpg')] = np.array([[r['x1'], r['y1'], r['x2']-r['x1'], r['y2']-r['y1'],
-                                                                                    r['confidence']]for r in result])
+                                                                            r['confidence']]for r in result['faces']])
         pred[event] = current_event
     norm_score(pred)
-
     facebox_list, event_list, file_list, hard_gt_list, medium_gt_list, easy_gt_list = get_gt_boxes(gt_path)
 
     event_num = len(event_list)
     thresh_num = 1000
-    settings = ['easy', 'medium', 'hard']
-    setting_gts = [easy_gt_list, medium_gt_list, hard_gt_list]
+    settings = ['medium']
+    setting_gts = [medium_gt_list]
     aps = []
-    for setting_id in range(3):
+    # for setting_id in range(3):
         # different setting
-        gt_list = setting_gts[setting_id]
-        count_face = 0
-        pr_curve = np.zeros((thresh_num, 2)).astype('float')
-        # [hard, medium, easy]
-        pbar = tqdm.tqdm(range(event_num))
-        for i in pbar:
-            pbar.set_description('Processing {}'.format(settings[setting_id]))
-            event_name = str(event_list[i][0][0])
-            img_list = file_list[i][0]
+    gt_list = setting_gts[0]
+    count_face = 0
+    pr_curve = np.zeros((thresh_num, 2)).astype('float')
+    # [hard, medium, easy]
+    pbar = tqdm.tqdm(range(event_num))
+    for i in pbar:
+        pbar.set_description('Processing {}'.format(settings[0]))
+        event_name = str(event_list[i][0][0])
+        img_list = file_list[i][0]
+        if event_name in pred.keys():
             pred_list = pred[event_name]
-            sub_gt_list = gt_list[i][0]
-            # img_pr_info_list = np.zeros((len(img_list), thresh_num, 2))
-            gt_bbx_list = facebox_list[i][0]
+        else:
+            continue
+        sub_gt_list = gt_list[i][0]
+        gt_bbx_list = facebox_list[i][0]
 
-            for j in range(len(img_list)):
-                if str(img_list[j][0][0]) not in pred_list.keys():
-                    continue
-                pred_info = pred_list[str(img_list[j][0][0])]
-                gt_boxes = gt_bbx_list[j][0].astype('float')
-                keep_index = sub_gt_list[j][0]
-                count_face += len(keep_index)
+        for j in range(len(img_list)):
+            if str(img_list[j][0][0]) not in pred_list.keys():
+                continue
+            pred_info = pred_list[str(img_list[j][0][0])]
+            gt_boxes = gt_bbx_list[j][0].astype('float')
+            keep_index = sub_gt_list[j][0]
+            count_face += len(keep_index)
 
-                if len(gt_boxes) == 0 or len(pred_info) == 0:
-                    continue
-                ignore = np.zeros(gt_boxes.shape[0])
-                if len(keep_index) != 0:
-                    ignore[keep_index-1] = 1
-                pred_recall, proposal_list = image_eval(pred_info, gt_boxes, ignore, iou_thresh)
+            if len(gt_boxes) == 0 or len(pred_info) == 0:
+                continue
+            ignore = np.zeros(gt_boxes.shape[0])
+            if len(keep_index) != 0:
+                ignore[keep_index-1] = 1
+            pred_recall, proposal_list = image_eval(pred_info, gt_boxes, ignore, iou_thresh)
 
-                _img_pr_info = img_pr_info(thresh_num, pred_info, proposal_list, pred_recall)
+            _img_pr_info = img_pr_info(thresh_num, pred_info, proposal_list, pred_recall)
 
-                pr_curve += _img_pr_info
+            pr_curve += _img_pr_info
         pr_curve = dataset_pr_info(thresh_num, pr_curve, count_face)
 
         propose = pr_curve[:, 0]
@@ -285,19 +296,20 @@ def eager_evaluation(pred_dir, gt_path, iou_thresh=0.5):
         ap = voc_ap(recall, propose)
         aps.append(ap)
     print("==================== Results ====================")
-    print("Easy    Val mAP: {}".format(aps[0]))
-    print("Medium  Val mAP: {}".format(aps[1]))
-    print("Hard    Val mAP: {}".format(aps[2]))
+    print("Medium  Val mAP: {}".format(aps[0]))
     print("=================================================")
 
 
 
 if __name__ == '__main__':
 
-    # evaluation(args.pred, args.gt)
-    # pred_path = './images/wider_face_val_result_retina'
-    # gt_path = './ground_truth'
-    # evaluation(pred_path, gt_path)
-    wider_val_images_path = './wider_val/22--Picnic'
-    ground_truth_path = './ground_truth'
-    eager_evaluation(pred_dir=wider_val_images_path, gt_path=ground_truth_path)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--pred', default='./wider_val')
+    parser.add_argument('-g', '--gt', default='./ground_truth/')
+
+    args = parser.parse_args()
+    eager_evaluation(args.pred, args.gt)
+
+    # wider_val_images_path = './wider_val/'
+    # ground_truth_path = './ground_truth'
+    # eager_evaluation(pred_dir=wider_val_images_path, gt_path=ground_truth_path)
