@@ -20,8 +20,10 @@ python3 setup.py build_ext --inplace
 **GroungTruth:** `wider_face_val.mat`, `wider_easy_val.mat`, `wider_medium_val.mat`,`wider_hard_val.mat`
 
 ````
-deprecated : python3 evaluation.py -p <your prediction dir> -g <groud truth dir>
+CLI : python3 src/evaluation.py -p <your prediction dir> -g <groud truth dir>
 Run : evaluation.py 
+TEST : streamlit run fd_streamlit.py 
+ - set dir root before TEST Run
 ````
 
 ## Acknowledgements
