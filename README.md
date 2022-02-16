@@ -1,7 +1,7 @@
 # WiderFace-Evaluation
 This code is evaluate for wider-face medium validation
 
-test provided `13--Interview` Only
+test provided : `13--Interview` Only
 
 you can test all of validation Image.
 Just Download Wider-face ImageDataset(Valid)
