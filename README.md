@@ -1,15 +1,18 @@
 # WiderFace-Evaluation
-Python Evaluation Code for [Wider Face Dataset](http://mmlab.ie.cuhk.edu.hk/projects/WIDERFace/)
+This code is evaluate for wider-face medium validation
 
+test provided `13--Interview` Only
+
+you can test all of validation Image.
+Just Download Wider-face ImageDataset(Valid)
 
 ## Usage
-python3 3.7
+* python3 3.7
+* face_detection Model : RetinaFace
 
 ##### before evaluating ....
-
 ````
-pip install Cython
-python3 setup.py build_ext --inplace
+pip install retinaface
 ````
 
 ##### evaluating
@@ -18,13 +21,12 @@ python3 setup.py build_ext --inplace
 - Need valid_imageset_path for evaluation
 
 **GroungTruth:** `wider_face_val.mat`, `wider_easy_val.mat`, `wider_medium_val.mat`,`wider_hard_val.mat`
+I converted wider_face_val.mat and wider_medium_val.mat to wider_medium_val.json
+It has all validation Information
+
+e.g.) {`dir name`: {`file name`: {`gt_index`:[], `gt_bbx_list`:[]}}}
 
 ````
-CLI : python3 src/evaluation.py -p <your prediction dir> -g <groud truth dir>
-Run : evaluation.py 
 TEST : streamlit run fd_streamlit.py 
  - set dir root before TEST Run
-````
-
-## Acknowledgements
-some code borrowed from Sergey Karayev
+```
