@@ -16,7 +16,7 @@ pip install retinaface
 ````
 
 ##### evaluating
-**Wider-face ImageDataset(Valid) You can Download from Under Link**
+**Wider-face ImageDataset(Valid) Download from Under Link**
 - https://drive.google.com/file/d/1GUCogbp16PMGa39thoMMeWxp7Rp5oM8Q/view
 - Need valid_imageset_path for evaluation
 
@@ -25,6 +25,7 @@ I converted wider_face_val.mat and wider_medium_val.mat to wider_medium_val.json
 It has all validation Information
 
 e.g.) {`dir name`: {`file name`: {`gt_index`:[], `gt_bbx_list`:[]}}}
+
 
 ````
 TEST : streamlit run fd_streamlit.py 
